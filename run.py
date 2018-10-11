@@ -38,8 +38,7 @@ class Handler(BaseHTTPRequestHandler):
 
 
 def run():
-    print("let's ant")
-    server_address = ('127.0.0.1', 7070)
+    server_address = ('0.0.0.0', 7070)
     httpd = HTTPServer(server_address, Handler)
     httpd.serve_forever()
 
