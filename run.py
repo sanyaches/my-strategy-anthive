@@ -2,7 +2,11 @@
 
 import json
 import random
-from http.server import BaseHTTPRequestHandler, HTTPServer
+
+try:  # For python 3
+    from http.server import BaseHTTPRequestHandler, HTTPServer
+except ImportError:  # For python 2
+    from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
 
 ACTIONS = ["move", "eat", "load", "unload"]
 DIRECTIONS = ["up", "down", "right", "left"]
@@ -17,20 +21,26 @@ class Handler(BaseHTTPRequestHandler):
     def do_POST(self):
         self._set_headers()
         payload = self.rfile.read(int(self.headers['Content-Length']))
-        response = {}
 
         # Hive object from request payload
         hive = json.loads(payload)
 
         # Loop through ants and give orders
+        orders = {}
         for ant in hive['ants']:
-            response[ant] = {
+            orders[ant] = {
                 "act": ACTIONS[random.randint(0, 3)],
                 "dir": DIRECTIONS[random.randint(0, 3)]
             }
+        response = json.dumps(orders)
+        print(response)
 
-        print("Orders:", response)
-        self.wfile.write(bytes(json.dumps(response), "utf8"))
+        try:  # For python 3
+            out = bytes(response, "utf8")
+        except TypeError:  # For python 2
+            out = bytes(response)
+
+        self.wfile.write(out)
 
         # json format sample:
         # {"1":{"act":"load","dir":"down"},"17":{"act":"load","dir":"up"}}
