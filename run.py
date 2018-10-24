@@ -2,11 +2,12 @@
 
 import json
 import random
+import math
 
 try:  # For python 3
     from http.server import BaseHTTPRequestHandler, HTTPServer
 except ImportError:  # For python 2
-    from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
+    from http.server import BaseHTTPRequestHandler, HTTPServer
 
 ACTIONS = ["move", "eat", "load", "unload"]
 DIRECTIONS = ["up", "down", "right", "left"]
@@ -25,13 +26,77 @@ class Handler(BaseHTTPRequestHandler):
         # Hive object from request payload
         hive = json.loads(payload)
 
+        # Save the map_food
+        coords_food = "-,-"
+        map_food = []
+        for i in range(0, hive['map']['height']):
+            map_food.append([])
+            for j in range(0, hive['map']['width']):
+                if 'food' in hive['map']['cells'][i][j]:
+                    map_food[i].append(hive['map']['cells'][i][j]['food'])
+                    coords_food += '|' + str(i) + ';' + str(j)
+                else:
+                    map_food[i].append(0)
+
+        # Search min path to food
+        min_coords = []
+        min_dist = math.sqrt(hive['map']['width'] ** 2 + hive['map']['height'] ** 2)
+        for coords in coords_food.split('|'):
+            x = coords.split(',')[0]
+            y = coords.split(',')[1]
+            new_dist = math.sqrt((hive['ants'][0]['x'] - x) ** 2 +
+                                 (hive['ants'][0]['y'] - y) ** 2)
+            if new_dist < min_dist:
+                min_dist = new_dist
+                min_coords.clear()
+                min_coords.append(x)
+                min_coords.append(y)
+
         # Loop through ants and give orders
         orders = {}
         for ant in hive['ants']:
-            orders[ant] = {
-                "act": ACTIONS[random.randint(0, 3)],
-                "dir": DIRECTIONS[random.randint(0, 3)]
-            }
+            x_ant = hive['ants'][ant]['x']
+            y_ant = hive['ants'][ant]['y']
+            if (hive['map']['cells'][x_ant - 1][y_ant]['food'] > 0):
+                orders[ant] = {
+                    "act": ACTIONS['load'],
+                    "dir": DIRECTIONS['left']
+                }
+            elif (hive['map']['cells'][x_ant + 1][y_ant]['food'] > 0):
+                orders[ant] = {
+                    "act": ACTIONS['load'],
+                    "dir": DIRECTIONS['right']
+                }
+            elif (hive['map']['cells'][x_ant][y_ant - 1]['food'] > 0):
+                orders[ant] = {
+                    "act": ACTIONS['load'],
+                    "dir": DIRECTIONS['up']
+                }
+            elif (hive['map']['cells'][x_ant][y_ant + 1]['food'] > 0):
+                orders[ant] = {
+                    "act": ACTIONS['load'],
+                    "dir": DIRECTIONS['down']
+                }
+            if ant['x'] > min_coords[0]:
+                orders[ant] = {
+                    'act': 'move',
+                    'dir': 'left'
+                }
+            elif ant['x'] < min_coords[0]:
+                orders[ant] = {
+                    'act': 'move',
+                    'dir': 'right'
+                }
+            elif ant['y'] < min_coords[1]:
+                orders[ant] = {
+                    'act': 'move',
+                    'dir': 'up'
+                }
+            elif ant['y'] > min_coords[1]:
+                orders[ant] = {
+                    'act': 'move',
+                    'dir': 'down'
+                }
         response = json.dumps(orders)
         print(response)
 
